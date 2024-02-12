@@ -62,7 +62,10 @@ for(i in 1:length(idxs[1:80])){
 
 # open atlas data --------------------------------------------------------------
 # assuming mesh is the 2.5D mesh of the left hemisphere of the brain (Conte69 atlas) 
-ext_disk <- "/media/aldoclemente/EXTERNAL_USB/"
+system("whoami > user.txt")
+user <- read.table("user.txt", header = FALSE)[,1]
+unlink("user.txt")
+ext_disk <- paste0("/media/", user, "/EXTERNAL_USB/")
 nodes <- readMat(paste0(ext_disk, "data/vertices.mat"))
 faces <- readMat(paste0(ext_disk, "data/faces.mat"))
 
@@ -103,18 +106,6 @@ FCmap_func<-function(fMRI) {
 }
 
 # open 1D data -----------------------------------------------------------------
-# thickness <- read.csv(paste0(ext_disk, "data/thickness_processed/100307.thickness.32k_fs_LR.dscalar.1D"), 
-#                       nrows=32492, header = FALSE, sep=' ')
-# head(thickness)
-# dim(thickness)
-# thickness[1,1]
-# thickness[32492,1]
-# 
-# 
-# fMRI <- read.csv(paste0(ext_disk, "data/rfMRI_REST_processed/100307.rfMRI_REST1_LR_Atlas.dtseries.1D"),
-#                           nrows=32492, header = FALSE, sep=' ')[,1:1200]
-#dim(fMRI)
-
 rfMRI_path <- paste0(ext_disk, "data/rfMRI_REST_processed/")
 n <- length(list.files(rfMRI_path)) # numero soggetti 
 

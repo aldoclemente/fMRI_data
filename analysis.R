@@ -1,5 +1,5 @@
 if(!require(fdaPDEKIM)){
-  devtools::install_github("aldoclemente/fdaPDEKIM", ref="master") 
+  devtools::install_github(repo="aldoclemente/fdaPDEKIM", ref="main") 
 }
 pacman::p_load("R.matlab")
 
