@@ -1,5 +1,7 @@
-# 
-pacman::p_load("fdaPDEKIM", "R.matlab")
+if(!require(fdaPDEKIM)){
+  devtools::install_github("aldoclemente/fdaPDEKIM", ref="master") 
+}
+pacman::p_load("R.matlab")
 
 # mesh -------------------------------------------------------------------------
 nodes <- readMat("data/vertices.mat")
