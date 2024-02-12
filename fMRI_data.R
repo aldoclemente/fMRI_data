@@ -118,11 +118,11 @@ FCmap_func<-function(fMRI) {
 rfMRI_path <- paste0(ext_disk, "data/rfMRI_REST_processed/")
 n <- length(list.files(rfMRI_path)) # numero soggetti 
 
-observations <- matrix(nrow=nrow(mesh$nodes), ncol=0)
+FC_maps <- matrix(nrow=nrow(mesh$nodes), ncol=0)
 for(file in list.files(rfMRI_path)){
   fMRI <- read.csv(paste0(rfMRI_path, file),
                    nrows=32492, header = FALSE, sep=' ')[,1:1200]
-  observations <- cbind(observations, FCmap_func(fMRI))
+  FC_maps <- cbind(FC_maps, FCmap_func(fMRI))
 }
 
 X <- matrix(nrow=nrow(mesh$nodes), ncol=0)
@@ -132,3 +132,5 @@ for(file in list.files(thickness_path)){
                          nrows=32492, header = FALSE, sep=' ')[,1]
   X <- cbind(X, thickness)
 }
+
+save(FC_maps, X, file = "data/data.RData")
