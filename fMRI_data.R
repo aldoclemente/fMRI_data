@@ -62,7 +62,7 @@ for(i in 1:length(idxs[1:80])){
 
 # open atlas data --------------------------------------------------------------
 # assuming mesh is the 2.5D mesh of the left hemisphere of the brain (Conte69 atlas) 
-
+ext_disk <- "/media/aldoclemente/EXTERNAL_USB/"
 nodes <- readMat(paste0(ext_disk, "data/vertices.mat"))
 faces <- readMat(paste0(ext_disk, "data/faces.mat"))
 
