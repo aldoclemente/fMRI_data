@@ -109,12 +109,14 @@ for(i in 1:n_sim){
   
   #lambda= 10^seq(-2,1,by=0.1) # 31
   lambda= 10^seq(-1,1,length=10)
+  na_idx <- sample(1:length(observations), size = round(0.1 * length(observations)))
+  observations[na_idx] <- NA
   output_CPP = fdaPDEKIM:::smooth.FEM.mixed(observations = observations, locations = locations,
-                                             covariates = X, random_effect = c(1,2),
-                                             FEMbasis = FEMbasis, lambda = lambda,
-                                             GCV=GCVFLAG, GCVmethod = GCVMETHODFLAG)
-
- 
+                                            covariates = X, random_effect = c(1,2),
+                                            FEMbasis = FEMbasis, lambda = lambda,
+                                            GCV=GCVFLAG, GCVmethod = GCVMETHODFLAG)
+  
+  
   best_lambda <- output_CPP$bestlambda
   #results
   results$beta_1[i] <- output_CPP$beta[1, best_lambda]
@@ -131,15 +133,15 @@ for(i in 1:n_sim){
   errors$b_3[i,] <- c(rmse(results$b_3[i,1], b[3]), rmse(results$b_3[1,2], 0.))
   
   errors$f_1[i] <- rmse(eval.FEM(FEM(as.matrix(output_CPP$fit.FEM.mixed$coeff[1:nnodes,best_lambda]), FEMbasis), test.locations),
-                     test.func1)
+                        test.func1)
   errors$f_2[i] <- rmse(eval.FEM(FEM(as.matrix(output_CPP$fit.FEM.mixed$coeff[(nnodes+1):(2*nnodes),best_lambda]), FEMbasis), test.locations),
                         test.func2)
   errors$f_3[i] <- rmse(eval.FEM(FEM(as.matrix(output_CPP$fit.FEM.mixed$coeff[(2*nnodes+1):(3*nnodes),best_lambda]), FEMbasis), test.locations),
                         test.func3)
   
   y_hat1 <- X1%*% as.matrix(output_CPP$beta[, best_lambda]) + 
-              eval.FEM(FEM(as.matrix(output_CPP$fit.FEM.mixed$coeff[1:nnodes,best_lambda]), FEMbasis), locations) + 
-                X1%*% as.matrix(output_CPP$b_i[1:2, best_lambda])
+    eval.FEM(FEM(as.matrix(output_CPP$fit.FEM.mixed$coeff[1:nnodes,best_lambda]), FEMbasis), locations) + 
+    X1%*% as.matrix(output_CPP$b_i[1:2, best_lambda])
   
   y_hat2 <- X2%*% as.matrix(output_CPP$beta[, best_lambda]) + 
     eval.FEM(FEM(as.matrix(output_CPP$fit.FEM.mixed$coeff[(nnodes+1):(2*nnodes),best_lambda]), FEMbasis), locations) + 
@@ -158,11 +160,11 @@ if(!dir.exists("data/")) {
   dir.create("data/")
 }
 
-if( !dir.exists("data/test_Cshaped2D/")){
-  dir.create("data/test_Cshaped2D/")
+if( !dir.exists("data/test_NA_Cshaped2D/")){
+  dir.create("data/test_NA_Cshaped2D/")
 }
 
-folder.name = paste("data/test_Cshaped2D/",date_,"/",sep="")
+folder.name = paste("data/test_NA_Cshaped2D/",date_,"/",sep="")
 
 if(!dir.exists(folder.name)) {
   dir.create(folder.name)
@@ -184,4 +186,3 @@ abline(h=betas[1], lty=2, col="red")
 
 boxplot(results$beta_2)
 abline(h=betas[2], lty=2, col="red")
-
