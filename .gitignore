@@ -3,3 +3,7 @@
 .RData
 .Ruserdata
 fMRI_data.Rproj
+*.png
+*.svg
+*jpeg
+*.pdf

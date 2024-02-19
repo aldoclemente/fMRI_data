@@ -1,4 +1,4 @@
-library(fdaPDEKIM)
+library(fdaPDEISCHIA)
 
 data(horseshoe2D)
 mesh=create.mesh.2D(nodes=horseshoe2D$boundary_nodes, 
@@ -66,7 +66,7 @@ test.func1 = fs.test.time(x=test.locations[,1], y=test.locations[,2],  t=rep(0.5
 test.func2 = fs.test.time(x=test.locations[,1], y=test.locations[,2],  t=rep(1, nrow(test.locations)))
 test.func3 = fs.test.time(x=test.locations[,1], y=test.locations[,2],  t=rep(1.5, nrow(test.locations)))
 
-n_sim <- 30
+n_sim <- 1
 results <- list(
   beta_1 = matrix(0, nrow=n_sim,ncol=1),
   beta_2 = matrix(0, nrow=n_sim,ncol=1),
@@ -109,12 +109,18 @@ for(i in 1:n_sim){
   
   #lambda= 10^seq(-2,1,by=0.1) # 31
   lambda= 10^seq(-1,1,length=10)
-  output_CPP = fdaPDEKIM:::smooth.FEM.mixed(observations = observations, locations = locations,
+  output_KIM = fdaPDEKIM:::smooth.FEM.mixed(observations = observations, locations = locations,
                                              covariates = X, random_effect = c(1,2),
                                              FEMbasis = FEMbasis, lambda = lambda,
                                              GCV=GCVFLAG, GCVmethod = GCVMETHODFLAG)
 
- 
+  output_ISCHIA = fdaPDEISCHIA:::smooth.FEM.mixed(observations = observations, locations = locations,
+                                             covariates = X, random_effect = c(1,2),
+                                             FEMbasis = FEMbasis, lambda = lambda, 
+                                             lambda.selection.criterion = "grid", 
+                                             lambda.selection.lossfunction = "GCV",
+                                             DOF.evaluation = "exact", FLAG_ITERATIVE = TRUE)
+
   best_lambda <- output_CPP$bestlambda
   #results
   results$beta_1[i] <- output_CPP$beta[1, best_lambda]
