@@ -1,12 +1,12 @@
-if(!require(fdaPDEISCHIA)){
-  devtools::install_github(repo ="aldoclemente/fdaPDEISCHIA")
+if(!require(fdaPDEmixed)){
+  devtools::install_github(repo ="aldoclemente/fdaPDEmixed")
 }
 
 if(!require(fdaPDEKIM)){
   devtools::install_github(repo ="aldoclemente/fdaPDEKIM")
 }
 
-library(fdaPDEISCHIA)
+library(fdaPDEmixed)
 
 data(horseshoe2D)
 mesh=create.mesh.2D(nodes=horseshoe2D$boundary_nodes, 

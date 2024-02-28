@@ -1,4 +1,4 @@
-library(fdaPDEISCHIA)
+library(fdaPDEmixed)
 
 data(horseshoe2D)
 mesh=create.mesh.2D(nodes=horseshoe2D$boundary_nodes, 
@@ -114,7 +114,7 @@ for(i in 1:n_sim){
                                              FEMbasis = FEMbasis, lambda = lambda,
                                              GCV=GCVFLAG, GCVmethod = GCVMETHODFLAG)
 
-  output_ISCHIA = fdaPDEISCHIA:::smooth.FEM.mixed(observations = observations, locations = locations,
+  output_ISCHIA = fdaPDEmixed:::smooth.FEM.mixed(observations = observations, locations = locations,
                                              covariates = X, random_effect = c(1,2),
                                              FEMbasis = FEMbasis, lambda = lambda, 
                                              lambda.selection.criterion = "grid", 

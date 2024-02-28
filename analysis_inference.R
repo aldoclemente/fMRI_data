@@ -1,8 +1,8 @@
-if(!require(fdaPDEISCHIA)){
-  devtools::install_github(repo="aldoclemente/fdaPDEISCHIA", ref="main") 
+if(!require(fdaPDEmixed)){
+  devtools::install_github(repo="aldoclemente/fdaPDEmixed", ref="main") 
 }
 
-pacman::p_load("R.matlab", "fdaPDEISCHIA")
+pacman::p_load("R.matlab", "fdaPDEmixed")
 source("utils.R")
 
 # mesh -------------------------------------------------------------------------
