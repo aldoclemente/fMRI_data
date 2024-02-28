@@ -62,5 +62,33 @@ for(i in 1:nsim){
   b[,i] <- output_mixed$b_i
 }
 
-filename <- "data/inference_bootstrap.RData"
+folder.name <- "data/application/"
+filename <- paste0(folder.name,"inference_bootstrap.RData")
 save(betas, b, file=filename)
+
+Q <- quantile(betas, probs = c(0.25,0.5,0.75))
+
+png(paste0(folder.name, "istogramma_beta.png"))
+hist(betas, col ="white", probability =TRUE, xlab="Beta", main="Hist of Beta")
+abline(v=Q[1], col="red3", lty=2, lwd=2)
+abline(v=Q[3], col="red3", lty=2, lwd=2)
+abline(v=Q[2], col="black", lty=2, lwd=2)
+abline(v=mean(betas), lty=1, lwd=3, col="blue")
+text(Q[1]-0.025*diff(range(betas)),820, labels = expression(Q[1]), srt=90)
+text(Q[2]-0.025*diff(range(betas)),820, labels = expression(Q[2]), srt=90)
+text(Q[3]-0.025*diff(range(betas)),820, labels = expression(Q[3]), srt=90)
+dev.off()
+
+shapiro.test(betas)
+
+png(paste0(folder.name,"qqnorm_betas.png"))
+qqnorm(betas)
+qqline(betas, col="red3", lty=2, lwd=3)
+dev.off()
+
+png(paste0(folder.name, "IC_95.png"))
+hist(betas, col ="white", probability =TRUE, xlab="Beta", main=expression(IC[0.95]))
+abline(v=mean(betas), lty=1, lwd=3, col="blue")
+abline(v=mean(betas) - qnorm(0.925)*sd(betas), col="red3", lty=1, lwd=3)
+abline(v=mean(betas) + qnorm(0.925)*sd(betas), col="red3", lty=1, lwd=3)
+dev.off()
