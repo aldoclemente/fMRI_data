@@ -105,9 +105,10 @@ windowRect = c(70,  106, 1920, 1117)
 
 #pp <- par3d(no.readonly = TRUE)
 
-plot.mesh.2.5D <- function(mesh, M = NULL, m = NULL, ...){
+plot.mesh.2.5D <- function(mesh, M = NULL, m = NULL, ROI=NULL,...){
   
   FEM = FEM(rep(0, nrow(mesh$nodes)), create.FEM.basis(mesh))
+  FEM$coeff[ROI,] <- 1 
   
   if (is.null(m)) { m = min(FEM$coeff)}
   if (is.null(M)) { M = max(FEM$coeff)}
@@ -129,14 +130,13 @@ plot.mesh.2.5D <- function(mesh, M = NULL, m = NULL, ...){
   FEMbasis = FEM$FEMbasis
   
   mesh = FEMbasis$mesh
-  
-  p = jet.col(n = 1000, alpha = 0.8)
+ 
+  #p = jet.col(n = 1000, alpha = 0.8)
   # alternative color palette: p <- colorRampPalette(c("#0E1E44", "#3E6DD8", "#68D061", "#ECAF53", "#EB5F5F", "#E11F1C"))(1000)
-  
+  p = c("white", "red3")
   palette(p)
   
   ncolor = length(p)
-  
   nsurf = dim(coeff)[[2]]
   for (isurf in 1:nsurf)
   {
@@ -216,3 +216,59 @@ plot.FEM <- function(FEM, M = NULL, m = NULL, ...){
     {readline("Press a button for the next plot...")}
   }
 }
+
+# Preprocessing ----------------------------------------------------------------
+filter_time_series <- function(Y, interval){
+  nrows <- nrow(Y)
+  ncols <- ncol(Y)
+  
+  Y_filtered <- matrix(nrow=nrows, ncol=ncols)
+  bf <- signal::butter(3, interval, type="pass")
+  for(i in 1:nrows){
+    y_time_series <- Y[i,]
+    y_filtered_time_series <- signal::filter(bf, y_time_series)
+    Y_filtered[i,] <- y_filtered_time_series
+  }
+  Y_filtered
+}
+
+correlation_maps <- function(fMRI_signal, roi_idx){
+  #time_series=t(as.matrix(fMRI_signal))
+  
+  time_series = fMRI_signal[,1:1200]
+  time_series = filter_time_series(time_series, c(0.009, 0.08))
+  
+  roi_time_series = time_series[roi_idx,]
+  roi_mean_time_series = colMeans(roi_time_series)
+  
+  nrows <- nrow(time_series)
+  ncols <- ncol(time_series)
+  
+  corr_map <- matrix(nrow=nrows, ncol=1)
+  for(i in 1:nrows){
+    corr_map[i,1] <- cor(roi_mean_time_series, time_series[i,])
+  }
+  corr_map
+}
+
+fisher.r2z <- function(r) { 0.5 * (log(1+r) - log(1-r)) }
+
+# FCmap_func<-function(corr) {
+#   
+#   time_series=t(as.matrix(fMRI))
+#   ROI_ts=time_series[,ROI_idx]
+#   # print(dim(ROI_ts)) #1200 1469
+#   
+#   cross_sec_avg_ROI_row=as.vector(rowMeans(ROI_ts))
+#   # print(length(cross_sec_avg_ROI_row)) #1200
+#   cor_nodes<-NULL
+#   for(j in 1:ncol(time_series)){
+#     cor_nodes<-c(cor_nodes,cor(cross_sec_avg_ROI_row, time_series[,j])) #have 1200 length in each nodes
+#   }
+#   # print(length(cor_nodes)) #32492
+#   print(length(which(is.na(cor_nodes)))) #2796
+#   
+#   r = cor_nodes
+#   z = 0.5 * log((1+r)/(1-r)) #fisher transformation
+#   z
+# }

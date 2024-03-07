@@ -92,3 +92,20 @@ abline(v=mean(betas), lty=1, lwd=3, col="blue")
 abline(v=mean(betas) - qnorm(0.925)*sd(betas), col="red3", lty=1, lwd=3)
 abline(v=mean(betas) + qnorm(0.925)*sd(betas), col="red3", lty=1, lwd=3)
 dev.off()
+
+
+# 1. 
+qqnorm(b[,1])
+qqline(b[,1], col="red3", lty=2, lwd=3)
+shapiro.test(b[,1])
+
+hist(b[,1], col ="white", probability =TRUE, xlab=expression(b[1]))
+abline(v=Q[1], col="red3", lty=2, lwd=2)
+abline(v=Q[3], col="red3", lty=2, lwd=2)
+abline(v=Q[2], col="black", lty=2, lwd=2)
+abline(v=mean(betas), lty=1, lwd=3, col="blue")
+text(Q[1]-0.025*diff(range(betas)),820, labels = expression(Q[1]), srt=90)
+text(Q[2]-0.025*diff(range(betas)),820, labels = expression(Q[2]), srt=90)
+text(Q[3]-0.025*diff(range(betas)),820, labels = expression(Q[3]), srt=90)
+dev.off()
+

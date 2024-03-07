@@ -26,6 +26,18 @@ snapshot3d(filename = paste0(folder.name,"brain_mesh.png"),
            fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
 rgl.close()
 
+
+brain_regions = read.csv("data/BrainRegions.csv")
+dim(brain_regions) #64984    69
+
+ROI_idx = brain_regions$L_precuneus[1:(nrow(mesh$nodes))] #nrow(mesh$nodes): 32492 ????
+ROI_idx = as.logical(ROI_idx)
+
+plot(mesh, ROI=ROI_idx)
+snapshot3d(filename = paste0(folder.name,"brain_mesh_ROI.png"),
+           fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
+rgl.close()
+
 # analysis --------------------------------------------------------------------- 
 load("data/data.RData") 
 
@@ -80,6 +92,7 @@ locations <- locations[-idx_na,]
 # locations <- locations[idx,]
 
 lambda=seq(1e-4, 1e-2, length.out=12)    #20) #12 patients
+
 start_ <- Sys.time()
 output_mixed <- smooth.FEM.mixed(
                            observations = as.matrix(observations), locations = locations,
@@ -227,3 +240,6 @@ save(CV_error, file = paste0(folder.name, "CV_error.RData"))
 png(paste0(folder.name, "CV_error.png"))
 boxplot(CV_error, col="lightgray", main="CV error")
 dev.off()
+
+# lambda fissato ---------------------------------------------------------------
+
