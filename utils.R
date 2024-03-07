@@ -164,8 +164,8 @@ plot.mesh.2.5D <- function(mesh, M = NULL, m = NULL, ROI=NULL,...){
 
 plot.FEM <- function(FEM, M = NULL, m = NULL, ...){
   
-  if (is.null(m)) { m = min(FEM$coeff)}
-  if (is.null(M)) { M = max(FEM$coeff)}
+  if (is.null(m)) { m = min(FEM$coeff, na.rm = T)}
+  if (is.null(M)) { M = max(FEM$coeff, na.rm = T)}
   triangles = c(t(FEM$FEMbasis$mesh$triangles))
   ntriangles = nrow(FEM$FEMbasis$mesh$triangles)
   order = FEM$FEMbasis$mesh$order
@@ -202,7 +202,7 @@ plot.FEM <- function(FEM, M = NULL, m = NULL, ...){
     diffrange = M - m
     
     col = coeff[triangles,isurf]
-    col = (col - min(coeff[,isurf]))/diffrange*(ncolor-1)+1
+    col = (col - min(coeff[,isurf], na.rm =T))/diffrange*(ncolor-1)+1
     
     rgl.triangles(x = nodes[triangles ,1], y = nodes[triangles ,2],
                   z = nodes[triangles,3],
@@ -224,30 +224,34 @@ filter_time_series <- function(Y, interval){
   
   Y_filtered <- matrix(nrow=nrows, ncol=ncols)
   bf <- signal::butter(3, interval, type="pass")
-  for(i in 1:nrows){
-    y_time_series <- Y[i,]
-    y_filtered_time_series <- signal::filter(bf, y_time_series)
-    Y_filtered[i,] <- y_filtered_time_series
-  }
+  
+  Y_filtered <-  t(apply(Y, MARGIN=1, FUN=function(row){
+                              signal::filter(bf, row)
+  }) )
+  # 
+  # for(i in 1:nrows){
+  #   y_time_series <- Y[i,]
+  #   y_filtered_time_series <- signal::filter(bf, y_time_series)
+  #   Y_filtered[i,] <- y_filtered_time_series
+  # }
   Y_filtered
 }
 
 correlation_maps <- function(fMRI_signal, roi_idx){
-  #time_series=t(as.matrix(fMRI_signal))
-  
-  time_series = fMRI_signal[,1:1200]
-  time_series = filter_time_series(time_series, c(0.009, 0.08))
-  
+
+  time_series = filter_time_series(fMRI_signal, c(0.009, 0.08))
   roi_time_series = time_series[roi_idx,]
-  roi_mean_time_series = colMeans(roi_time_series)
+  roi_mean_time_series = colMeans(roi_time_series) # == ncol(fmRI_signal) OK!
   
-  nrows <- nrow(time_series)
-  ncols <- ncol(time_series)
-  
-  corr_map <- matrix(nrow=nrows, ncol=1)
-  for(i in 1:nrows){
-    corr_map[i,1] <- cor(roi_mean_time_series, time_series[i,])
-  }
+  #nrows <- nrow(time_series)
+  #ncols <- ncol(time_series)
+  #corr_map <- matrix(nrow=nrows, ncol=1)
+  # for(i in 1:nrows){
+  #   corr_map[i,1] <- cor(roi_mean_time_series, time_series[i,])
+  # }
+  corr_map <- apply(time_series, MARGIN=1, function(row){
+    cor(row, roi_mean_time_series)
+  })
   corr_map
 }
 
