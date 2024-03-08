@@ -105,10 +105,12 @@ windowRect = c(70,  106, 1920, 1117)
 
 #pp <- par3d(no.readonly = TRUE)
 
-plot.mesh.2.5D <- function(mesh, M = NULL, m = NULL, ROI=NULL,...){
+plot.mesh.2.5D <- function(mesh, M = NULL, m = NULL, ROI=NULL, NA_ = NULL,...){
   
   FEM = FEM(rep(0, nrow(mesh$nodes)), create.FEM.basis(mesh))
   FEM$coeff[ROI,] <- 1 
+  FEM$coeff[NA_,] <- 2
+  
   
   if (is.null(m)) { m = min(FEM$coeff)}
   if (is.null(M)) { M = max(FEM$coeff)}
@@ -133,7 +135,7 @@ plot.mesh.2.5D <- function(mesh, M = NULL, m = NULL, ROI=NULL,...){
  
   #p = jet.col(n = 1000, alpha = 0.8)
   # alternative color palette: p <- colorRampPalette(c("#0E1E44", "#3E6DD8", "#68D061", "#ECAF53", "#EB5F5F", "#E11F1C"))(1000)
-  p = c("white", "red3")
+  p = c("lightgray", "red3", "blue3")
   palette(p)
   
   ncolor = length(p)
