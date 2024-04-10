@@ -15,12 +15,13 @@ faces <- faces$faces
 mesh <- create.mesh.2.5D(nodes = nodes, triangles = faces)
 
 # brain regions (!!!) ----------------------------------------------------------
-brain_regions = read.csv(paste0(ext_disk, "data/BrainRegions.csv"))
-dim(brain_regions) #64984    69
+#brain_regions = read.csv(paste0(ext_disk, "data/BrainRegions.csv"))
+#dim(brain_regions) #64984    69
 
-roi_idx = brain_regions$L_precuneus[1:(nrow(mesh$nodes))] #nrow(mesh$nodes): 32492 ????
-roi_idx = as.logical(roi_idx)
-#length(which(roi_idx == TRUE)) 
+parcellation <- "gordon2016" #
+brain_regions = read.csv("data/gordon_parcellation2016.csv")
+if(parcellation == "gordon2016")
+  roi_idx = as.logical(gordon_parcellation$Parcel_1) # precuneo
 
 # read data --------------------------------------------------------------------
 rfMRI_path <- paste0(ext_disk, "data/rfMRI_REST_processed/")
@@ -36,10 +37,10 @@ for(file in list.files(rfMRI_path)[1:m]){
 }
 
 if(!dir.exists("data/")) dir.create("data/")
-save(BOLD, file = "data/BOLD_filtered.RData")
+save(BOLD, file = paste0("data/", parcellation,"_BOLD_filtered.RData"))
 
 FCmaps <- fisher.r2z(BOLD)
-save(FCmaps, file = "data/FCmaps.RData")
+save(FCmaps, file = paste0("data/", parcellation,"_FCmaps.RData"))
 
 # read thickness ---------------------------------------------------------------
 thickness <- matrix(nrow=nrow(mesh$nodes), ncol=0)
@@ -50,9 +51,13 @@ for(file in list.files(thickness_path)[1:m]){
   thickness <- cbind(thickness, thick)
 }
 
-save(thickness, file ="data/thickness.RData")
+save(thickness, file = paste0("data/", parcellation,"_thickness.RData"))
 
 # BOLD plots -------------------------------------------------------------------
+folder.name <- paste0("data/", parcellation,"_BOLD_filtered/")
+if(!dir.exists(folder.name))
+ dir.create(folder.name)
+
 nnodes <- nrow(mesh$nodes)
 
 min.col = min(FCmaps, na.rm = T)
@@ -79,4 +84,28 @@ for(i in 1:m){
 
 for(i in 1:m){
 cat( length(na_idx[[i]]), "\n")
+}
+
+# FC maps ----------------------------------------------------------------------
+folder.name <- paste0("data/", parcellation,"_FCmaps/")
+if(!dir.exists(folder.name))
+  dir.create(folder.name)
+
+m <- 
+nnodes <- nrow(mesh$nodes)
+
+min.col = min(FCmaps, na.rm = T)
+max.col = max(FCmaps, na.rm = T)
+
+FEMbasis <- create.FEM.basis(mesh)
+for(i in 1:m){ # (nnodes+1):(2*nnodes)
+  
+  FEMobject <- FEM(coeff = FCmaps[,i],
+                   FEMbasis = FEMbasis)
+  
+  plot(FEMobject, m=min.col, M=max.col)
+  #rgl.postscript("brain_mesh.pdf", fmt="pdf")
+  snapshot3d(filename = paste0(folder.name,"patient_", i,".png"),
+             fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
+  rgl.close()
 }
