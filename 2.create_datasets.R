@@ -15,13 +15,14 @@ faces <- faces$faces
 mesh <- create.mesh.2.5D(nodes = nodes, triangles = faces)
 
 # brain regions (!!!) ----------------------------------------------------------
+#parcellation <- "unknown"
 #brain_regions = read.csv(paste0(ext_disk, "data/BrainRegions.csv"))
 #dim(brain_regions) #64984    69
 
-parcellation <- "gordon2016" #
+parcellation <- "gordon2016" # see Lila et al. (2016)
 brain_regions = read.csv("data/gordon_parcellation2016.csv")
 if(parcellation == "gordon2016")
-  roi_idx = as.logical(gordon_parcellation$Parcel_1) # precuneo
+  roi_idx = as.logical(brain_regions$Parcel_1) # precuneo
 
 # read data --------------------------------------------------------------------
 rfMRI_path <- paste0(ext_disk, "data/rfMRI_REST_processed/")
@@ -90,9 +91,6 @@ cat( length(na_idx[[i]]), "\n")
 folder.name <- paste0("data/", parcellation,"_FCmaps/")
 if(!dir.exists(folder.name))
   dir.create(folder.name)
-
-m <- 
-nnodes <- nrow(mesh$nodes)
 
 min.col = min(FCmaps, na.rm = T)
 max.col = max(FCmaps, na.rm = T)
