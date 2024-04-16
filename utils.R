@@ -164,7 +164,7 @@ plot.mesh.2.5D <- function(mesh, M = NULL, m = NULL, ROI=NULL, NA_ = NULL,...){
   }
 }
 
-plot.FEM <- function(FEM, M = NULL, m = NULL, ...){
+plot.FEM <- function(FEM, M = NULL, m = NULL, colorscale = jet.col,...){
   
   if (is.null(m)) { m = min(FEM$coeff, na.rm = T)}
   if (is.null(M)) { M = max(FEM$coeff, na.rm = T)}
@@ -187,10 +187,10 @@ plot.FEM <- function(FEM, M = NULL, m = NULL, ...){
   
   mesh = FEMbasis$mesh
   
-  p = jet.col(n = 1000, alpha = 0.8)
+  p = colorscale(n = 1000, alpha = 0.8)
   # alternative color palette: p <- colorRampPalette(c("#0E1E44", "#3E6DD8", "#68D061", "#ECAF53", "#EB5F5F", "#E11F1C"))(1000)
   
-  palette(p)
+  grDevices::palette(p)
   
   ncolor = length(p)
   
@@ -208,7 +208,7 @@ plot.FEM <- function(FEM, M = NULL, m = NULL, ...){
     
     rgl.triangles(x = nodes[triangles ,1], y = nodes[triangles ,2],
                   z = nodes[triangles,3],
-                  color = col,...)
+                  color = col) #,...)
     # rgl.lines(x = nodes[edges ,1], y = nodes[edges ,2],
     #           z = nodes[edges,3],
     #           color = "black",...)

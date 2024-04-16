@@ -34,6 +34,7 @@ filter_signal = FALSE
 # read BOLD signal -------------------------------------------------------------
 i = 1
 for(file in list.files(rfMRI_path)[1:m]){
+  cat(" ---------- ", i , " / ", m, " ---------- \n")
   fMRI_signal <- read.csv(paste0(rfMRI_path, file),
                    nrows=32492, header = FALSE, sep=' ')[,1:1200]
   corr_map[,i] <- correlation_maps(fMRI_signal, roi_idx, filter_signal)
@@ -55,36 +56,79 @@ thickness <- matrix(nrow=nrow(mesh$nodes), ncol=m)
 thickness_path <- paste0(ext_disk, "data/thickness_processed/")
 i = 1
 for(file in list.files(thickness_path)[1:m]){
+  cat(" ---------- ", i , " / ", m, " ---------- \n")
   thick <- read.csv(paste0(thickness_path, file),
                         nrows=32492, header = FALSE, sep=' ')[,1]
   thickness[,i] <- thick
   i = i + 1
 }
 
-save(thickness, file = paste0("data/", parcellation,"_thickness.RData"))
+save(thickness, file = paste0("data/","thickness.RData"))
 
 # FCmaps plots -------------------------------------------------------------------
-folder.name <- paste0("data/", parcellation,"_FCmaps_filtered/")
+folder.name <- paste0("data/FCmaps/")
 if(!dir.exists(folder.name))
  dir.create(folder.name)
 
+colorscales = list(rainbow = jet.col, viridis = viridis::viridis)
 nnodes <- nrow(mesh$nodes)
 
 min.col = min(FCmaps, na.rm = T)
 max.col = max(FCmaps, na.rm = T)
 
 FEMbasis <- create.FEM.basis(mesh)
+
+for(p in names(colorscales))
+  if(!dir.exists(paste0(folder.name, p, "/"))) dir.create(paste0(folder.name, p, "/"))
+
 for(i in 1:m){ # (nnodes+1):(2*nnodes)
 
   FEMobject <- FEM(coeff = FCmaps[,i],
                     FEMbasis = FEMbasis)
   
-  plot(FEMobject, m=min.col, M=max.col)
-  #rgl.postscript("brain_mesh.pdf", fmt="pdf")
-  snapshot3d(filename = paste0(folder.name,"patient_", i,".png"),
-             fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
-  rgl.close()
+  for(p in names(colorscales)){
+    plot(FEMobject, m=min.col, M=max.col, colorscale = colorscales[[p]])
+    #rgl.postscript("brain_mesh.pdf", fmt="pdf")
+    snapshot3d(filename = paste0(folder.name, p, "/","patient_", i,".png"),
+               fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
+    rgl.close()
+  }
 }
+
+# FCmaps (gordon) plots --------------------------------------------------------
+na_idx <- as.logical(brain_regions$na)
+folder.name <- paste0("data/", parcellation,"_FCmaps/")
+if(!dir.exists(folder.name))
+  dir.create(folder.name)
+
+colorscales = list(rainbow = jet.col, viridis = viridis::viridis)
+nnodes <- nrow(mesh$nodes)
+
+min.col = min(FCmaps, na.rm = T)
+max.col = max(FCmaps, na.rm = T)
+
+FEMbasis <- create.FEM.basis(mesh)
+
+for(p in names(colorscales))
+  if(!dir.exists(paste0(folder.name, p, "/"))) dir.create(paste0(folder.name, p, "/"))
+
+for(i in 1:m){ # (nnodes+1):(2*nnodes)
+  coeff <- FCmaps[,i]
+  coeff[na_idx] <- NA
+  FEMobject <- FEM(coeff = coeff,
+                   FEMbasis = FEMbasis)
+  
+  for(p in names(colorscales)){
+    plot(FEMobject, m=min.col, M=max.col, colorscale = colorscales[[p]])
+    #rgl.postscript("brain_mesh.pdf", fmt="pdf")
+    snapshot3d(filename = paste0(folder.name, p, "/","patient_", i,".png"),
+               fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
+    rgl.close()
+  }
+}
+
+
+
 # ------------------------------------------------------------------------------
 
 na_idx <- vector(mode="list", length = m)
