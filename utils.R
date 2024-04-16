@@ -220,37 +220,31 @@ plot.FEM <- function(FEM, M = NULL, m = NULL, ...){
 }
 
 # Preprocessing ----------------------------------------------------------------
-filter_time_series <- function(Y, interval){
-  nrows <- nrow(Y)
-  ncols <- ncol(Y)
+filter_time_series <- function(Y, interval, filter_signal){
+  Y_filtered <- Y
+  if(filter_signal){
+    nrows <- nrow(Y)
+    ncols <- ncol(Y)
+    
+    Y_filtered <- matrix(nrow=nrows, ncol=ncols)
+    bf <- signal::butter(3, interval, type="pass")
+    
+    Y_filtered <-  t(apply(Y, MARGIN=1, FUN=function(row){
+                          
+            signal::filter(bf, row)
+    }) )
+  }
   
-  Y_filtered <- matrix(nrow=nrows, ncol=ncols)
-  bf <- signal::butter(3, interval, type="pass")
-  
-  Y_filtered <-  t(apply(Y, MARGIN=1, FUN=function(row){
-                              signal::filter(bf, row)
-  }) )
-  # 
-  # for(i in 1:nrows){
-  #   y_time_series <- Y[i,]
-  #   y_filtered_time_series <- signal::filter(bf, y_time_series)
-  #   Y_filtered[i,] <- y_filtered_time_series
-  # }
   Y_filtered
 }
 
-correlation_maps <- function(fMRI_signal, roi_idx){
-
-  time_series = filter_time_series(fMRI_signal, c(0.009, 0.08))
+correlation_maps <- function(fMRI_signal, roi_idx, filter_signal = FALSE){
+  
+  time_series = filter_time_series(fMRI_signal, 
+                                   interval = c(0.009, 0.08), filter_signal = filter_signal)
   roi_time_series = time_series[roi_idx,]
   roi_mean_time_series = colMeans(roi_time_series) # == ncol(fmRI_signal) OK!
   
-  #nrows <- nrow(time_series)
-  #ncols <- ncol(time_series)
-  #corr_map <- matrix(nrow=nrows, ncol=1)
-  # for(i in 1:nrows){
-  #   corr_map[i,1] <- cor(roi_mean_time_series, time_series[i,])
-  # }
   corr_map <- apply(time_series, MARGIN=1, function(row){
     cor(row, roi_mean_time_series)
   })

@@ -29,33 +29,42 @@ rfMRI_path <- paste0(ext_disk, "data/rfMRI_REST_processed/")
 m <- length(list.files(rfMRI_path)) # numero soggetti 80..
 
 m = 30
-BOLD <- matrix(nrow=nrow(mesh$nodes), ncol=0)
+corr_map <- matrix(nrow=nrow(mesh$nodes), ncol=m)
+filter_signal = FALSE
 # read BOLD signal -------------------------------------------------------------
+i = 1
 for(file in list.files(rfMRI_path)[1:m]){
   fMRI_signal <- read.csv(paste0(rfMRI_path, file),
                    nrows=32492, header = FALSE, sep=' ')[,1:1200]
-  BOLD <- cbind(BOLD, correlation_maps(fMRI_signal, roi_idx))
+  corr_map[,i] <- correlation_maps(fMRI_signal, roi_idx, filter_signal)
+  i = i + 1
 }
 
 if(!dir.exists("data/")) dir.create("data/")
-save(BOLD, file = paste0("data/", parcellation,"_BOLD_filtered.RData"))
+save(corr_map, file = ifelse(filter_signal, 
+                             paste0("data/", parcellation,"_corr_map_filtered.RData"),
+                             paste0("data/", parcellation,"_corr_map.RData")))
 
-FCmaps <- fisher.r2z(BOLD)
-save(FCmaps, file = paste0("data/", parcellation,"_FCmaps.RData"))
+FCmaps <- fisher.r2z(corr_map)
+save(FCmaps, file = ifelse( filter_signal, 
+                            paste0("data/", parcellation,"_FCmaps_filtered.RData"),
+                            paste0("data/", parcellation,"_FCmaps.RData")))
 
 # read thickness ---------------------------------------------------------------
-thickness <- matrix(nrow=nrow(mesh$nodes), ncol=0)
+thickness <- matrix(nrow=nrow(mesh$nodes), ncol=m)
 thickness_path <- paste0(ext_disk, "data/thickness_processed/")
+i = 1
 for(file in list.files(thickness_path)[1:m]){
   thick <- read.csv(paste0(thickness_path, file),
                         nrows=32492, header = FALSE, sep=' ')[,1]
-  thickness <- cbind(thickness, thick)
+  thickness[,i] <- thick
+  i = i + 1
 }
 
 save(thickness, file = paste0("data/", parcellation,"_thickness.RData"))
 
-# BOLD plots -------------------------------------------------------------------
-folder.name <- paste0("data/", parcellation,"_BOLD_filtered/")
+# FCmaps plots -------------------------------------------------------------------
+folder.name <- paste0("data/", parcellation,"_FCmaps_filtered/")
 if(!dir.exists(folder.name))
  dir.create(folder.name)
 
@@ -80,7 +89,7 @@ for(i in 1:m){ # (nnodes+1):(2*nnodes)
 
 na_idx <- vector(mode="list", length = m)
 for(i in 1:m){
-  na_idx[[i]] <- which(is.na(BOLD[,i]))
+  na_idx[[i]] <- which(is.na(corr_map[,i]))
 }
 
 for(i in 1:m){
