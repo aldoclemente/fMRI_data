@@ -2,6 +2,10 @@ if(!require(fdaPDEmixed)){
   devtools::install_github(repo="aldoclemente/fdaPDEmixed", ref="main") 
 }
 
+system("whoami > user.txt")
+user <- read.table("user.txt", header = FALSE)[,1]
+unlink("user.txt")
+.libPaths( c( paste0("/home/", user, "/R/"), .libPaths() ) ) 
 pacman::p_load("R.matlab", "fdaPDEmixed")
 source("utils.R")
 # mesh -------------------------------------------------------------------------
@@ -27,91 +31,133 @@ if(!dir.exists(folder.name))
   dir.create(folder.name)
 
 #rgl.postscript("brain_mesh.pdf", fmt="pdf")
+{
 plot(mesh)
 snapshot3d(filename = paste0(folder.name,"brain_mesh.png"),
            fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
 rgl.close()
+}
 
 # Gordon (2016) parcellization, see Lila et al.  
 gordon_parcellation = read.csv("data/gordon_parcellation2016.csv")
 dim(gordon_parcellation) 
 na_ <- as.logical(gordon_parcellation$na)
+{
 plot(mesh, NA_ = na_)
 snapshot3d(filename = paste0(folder.name,"brain_mesh.png"),
            fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
 rgl.close()
+}
 
 roi <- as.logical(gordon_parcellation$Parcel_1) # precuneo !
+
+{
 plot.mesh.2.5D(mesh, ROI = roi, NA_=na_)
 snapshot3d(filename = paste0(folder.name, "brain_mesh_roi.png"),
            fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
 rgl.close()
-
+}
 # analysis --------------------------------------------------------------------- 
-load("data/gordon_parcellation/FCmaps.RData")
-load("data/gordon_parcellation/thickness.RData")
-
-# NA handling 
-idx_na <- which(is.na(FCmaps))
-X[idx_na] = 0.
+load("data/gordon2016_FCmaps.RData")
+load("data/thickness.RData")
 
 # ------------------------------------------------------------------------------
- 
-m = ncol(FC_maps) # num subjects
-observations <- FC_maps
-idx_na <-unique(which(is.na(observations),arr.ind = TRUE)[,1]) # delle locazioni che andranno eliminate
-locations <- mesh$nodes
+m = ncol(FCmaps) # num subjects
+m = 2 
+observations <- FCmaps
+na_idx <-unique(which(is.na(observations[,1]))) 
+#locations <- mesh$nodes
 
-observations <- observations[-idx_na,]
-covariates <- X[-idx_na,1:m]
-locations <- locations[-idx_na,]
+observations <- observations[,1:m]
+covariates <- thickness[,1:m]
 
-lambda=seq(1e-4, 1e-2, length.out=12)    
+covariates[na_idx, ] <- 1e-8
+# locations <- locations[-na_idx,]
+
+lambda=seq(1e-4, 1e1, length.out=20)    
 
 start_ <- Sys.time()
-output_mixed <- smooth.FEM.mixed(
-  observations = as.matrix(observations), locations = locations,
+invisible(capture.output(output_mixed <- smooth.FEM.mixed(
+  observations = as.matrix(observations), #locations = locations,
   covariates = as.vector(covariates), random_effect = c(1), 
   lambda = lambda,
   lambda.selection.criterion = "grid", 
   lambda.selection.lossfunction = "GCV",
   DOF.evaluation = "stochastic",
-  FEMbasis = FEMbasis, FLAG_ITERATIVE = TRUE)
+  FEMbasis = FEMbasis, FLAG_ITERATIVE = TRUE)))
 time_ <- difftime(Sys.time(), start_, units ="mins")
+cat("time elapsed: ", round(as.numeric(time_), 2), " mins \n")
 output_mixed$beta
 
 save(output_mixed, file = paste0(folder.name, date_, ".RData"))
 
 nnodes <- nrow(mesh$nodes)
 best_lambda <- output_mixed$bestlambda
+#best_lambda <- 1
 min.col = min(output_mixed$fit.FEM.mixed$coeff[, best_lambda])
 max.col = max(output_mixed$fit.FEM.mixed$coeff[, best_lambda])
-for(i in 1:m){ # (nnodes+1):(2*nnodes)
-  FEMobject <- FEM(coeff = output_mixed$fit.FEM.mixed$coeff[((i-1)*nnodes+1):(i*nnodes), best_lambda],
-                   FEMbasis = FEMbasis)
+
+colorscales = list(rainbow = jet.col, viridis = viridis::viridis)
+colorbar_limits = list(same_limits = "same_limits", different_limits = "different_limits")
+
+for(p in names(colorscales)){
+  imgs.name <- paste0(folder.name, p, "/")
+    if(!dir.exists(imgs.name))
+      dir.create(imgs.name)
+   
+  for(lims in names(colorbar_limits)){
+    imgs.name <- paste0(folder.name, p, "/", lims, "/")
+    if(!dir.exists(imgs.name)) dir.create(imgs.name)
   
-  plot(FEMobject, m=min.col, M=max.col)
-  #rgl.postscript("brain_mesh.pdf", fmt="pdf")
-  snapshot3d(filename = paste0(folder.name,"patient_", i,".png"),
-             fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
-  rgl.close()
+    for(i in 1:m){ # (nnodes+1):(2*nnodes)
+      coeff <- output_mixed$fit.FEM.mixed$coeff[((i-1)*nnodes+1):(i*nnodes), best_lambda]
+      coeff[na_idx] <- NA
+      FEMobject <- FEM(coeff = coeff,
+                       FEMbasis = FEMbasis)
+      if( lims == "different_limits" ){
+          MIN.COL = MAX.COL = limits = NULL;
+        }else{
+          MIN.COL = min.col; MAX.COL = max.col; limits=c(min.col, max.col);
+        }
+      
+      
+      if(!dir.exists(paste0(imgs.name, "estimates/"))) dir.create(paste0(imgs.name, "estimates/"))
+      plot(FEMobject, m=MIN.COL, M=MAX.COL, colorscale = colorscales[[p]])
+        #rgl.postscript("brain_mesh.pdf", fmt="pdf")
+      snapshot3d(filename = paste0(paste0(imgs.name, "estimates/"),
+                                   "patient_", i,".png"),
+                   fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
+      rgl.close()
+      
+      if(!dir.exists(paste0(imgs.name, "colorbars/"))) dir.create(paste0(imgs.name, "colorbars/"))
+      
+      if(lims == "same_limits" & i == 1){
+        plot.colorbar(FEMobject, limits, colorscale =  colorscales[[p]], 
+                    file = paste0(paste0(imgs.name, "colorbars/"), 
+                                  "colorbar") )
+      }else if(lims == "different_limits"){
+        plot.colorbar(FEMobject, limits, colorscale =  colorscales[[p]], 
+                    file = paste0(paste0(imgs.name, "colorbars/"), 
+                                  "patient_", i ,"_colorbar") )
+      }
+    }
+  }
 }
 
 # RMSE -------------------------------------------------------------------------
-rmse <- 0
+rmse <- matrix(0, nrow=nrow(mesh$nodes[-na_idx,]), ncol=30)
 
-COV <- matrix(covariates, nrow=nrow(locations), ncol=m)
 for(i in 1:m){
-  fitted <- COV[,i]%*% as.matrix(output_mixed$beta[, best_lambda]) + 
-    eval.FEM(FEM(output_mixed$fit.FEM.mixed$coeff[((i-1)*nnodes+1):(i*nnodes), best_lambda], 
-                 FEMbasis), locations) + 
-    COV[,i]%*% as.matrix(output_mixed$b_i[i, best_lambda])
+  coeff <- output_mixed$fit.FEM.mixed$coeff[((i-1)*nnodes+1):(i*nnodes), best_lambda]
+  coeff[na_idx] <- NA
+  fitted <- covariates[-na_idx,i]%*% as.matrix(output_mixed$beta[-na_idx, best_lambda]) + 
+    eval.FEM(FEM(coeff, FEMbasis), mesh$nodes[-na_idx,]) + 
+    covariates[-na_idx,i]%*% as.matrix(output_mixed$b_i[i, best_lambda])
   
-  rmse <- rmse + (fitted - observations[,i])^2
+  rmse[,i] <- (fitted - observations[-na_idx,i])^2
 }
 
-rmse <- sqrt( sum(rmse) / ( m * nrow(locations) ) )
-rmse
+sqrt(sum(colSums(rmse, na.rm = T))/(m*nrow(mesh$nodes[-na_idx,])))
 
 # 10 folds CROSS VALIDATION ----------------------------------------------------
 COV <- matrix(covariates, nrow=nrow(locations), ncol=m)
