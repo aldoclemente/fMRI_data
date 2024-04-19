@@ -63,7 +63,7 @@ load("data/thickness.RData")
 
 # ------------------------------------------------------------------------------
 m = ncol(FCmaps) # num subjects
-m = 2 
+#m = 2 
 observations <- FCmaps
 na_idx <-unique(which(is.na(observations[,1]))) 
 #locations <- mesh$nodes
@@ -74,7 +74,9 @@ covariates <- thickness[,1:m]
 covariates[na_idx, ] <- 1e-8
 # locations <- locations[-na_idx,]
 
-lambda=seq(1e-4, 1e1, length.out=20)    
+#lambda=seq(1e-4, 1e1, length.out=30)  # NO
+#lambda=seq(1e-4, 1e-1, length.out=40) # Quasi, siamo sicuri che la GCV funzioni ?
+lambda=seq(1e-4, 1e-2, length.out=40)
 
 start_ <- Sys.time()
 invisible(capture.output(output_mixed <- smooth.FEM.mixed(
@@ -89,11 +91,16 @@ time_ <- difftime(Sys.time(), start_, units ="mins")
 cat("time elapsed: ", round(as.numeric(time_), 2), " mins \n")
 output_mixed$beta
 
-save(output_mixed, file = paste0(folder.name, date_, ".RData"))
+save(output_mixed, lambda, file = paste0(folder.name, date_, ".RData"))
 
+png(paste0(folder.name, "GCV.png" ))
+plot(log10(lambda), output_mixed$GCV, pch=16, cex=1.5,
+     xlab = expression(log[10](lambda)), ylab="GCV")
+dev.off()
 nnodes <- nrow(mesh$nodes)
 best_lambda <- output_mixed$bestlambda
-#best_lambda <- 1
+# best_lambda <- 1
+# lambda <- lambda[best_lambda]
 min.col = min(output_mixed$fit.FEM.mixed$coeff[, best_lambda])
 max.col = max(output_mixed$fit.FEM.mixed$coeff[, best_lambda])
 
@@ -144,6 +151,24 @@ for(p in names(colorscales)){
   }
 }
 
+# mean field (?) ---------------------------------------------------------------
+mean_coeff <- matrix(output_mixed$fit.FEM.mixed$coeff[,best_lambda], nrow=nnodes, ncol=m)
+mean_coeff <- rowMeans(mean_coeff, na.rm = T) 
+
+for(p in names(colorscales)){
+    imgs.name <- paste0(folder.name, p, "/")
+    mean_coeff[na_idx] <- NA
+    FEMobject <- FEM(coeff = mean_coeff,
+                     FEMbasis = FEMbasis)
+    plot(FEMobject, colorscale = colorscales[[p]])
+    #rgl.postscript("brain_mesh.pdf", fmt="pdf")
+    snapshot3d(filename = paste0(paste0(imgs.name, "mean_estimate.png")),
+               fmt = "png", width = 800, height = 750, webshot = rgl.useNULL())
+    rgl.close()
+    
+    plot.colorbar(FEMobject, colorscale =  colorscales[[p]], 
+                  file = paste0(paste0(imgs.name, "mean_colorbar") ))
+}
 # RMSE -------------------------------------------------------------------------
 rmse <- matrix(0, nrow=nrow(mesh$nodes[-na_idx,]), ncol=30)
 
