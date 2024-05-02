@@ -185,6 +185,13 @@ for(i in 1:m){
 sqrt(sum(colSums(rmse, na.rm = T))/(m*nrow(mesh$nodes[-na_idx,])))
 
 # 10 folds CROSS VALIDATION ----------------------------------------------------
+# NAs non vanno bene con locazioni diverse dai nodi della mesh... devo eliminare
+locations <- mesh$nodes
+idx_na <-unique(which(is.na(FCmaps),arr.ind = TRUE)[,1])
+locations <- mesh$nodes[-idx_na,]
+covariates <- thickness[-idx_na,]
+observations <- FCmaps[-idx_na,]
+
 COV <- matrix(covariates, nrow=nrow(locations), ncol=m)
 K <- 10L
 seed <- as.integer(12345)
@@ -247,8 +254,6 @@ for(k in 1:K){
     }
   }
   
-  lambda=seq(1e-4, 1e-2, length.out=12)    #20) #12 patients
-  
   invisible(capture.output(output_mixed <-  smooth.FEM.mixed(
     observations = as.matrix(train_obs), locations = as.matrix(train_locs),
     covariates = as.vector(as.matrix(train_covs)), random_effect = c(1), 
@@ -259,7 +264,7 @@ for(k in 1:K){
     FEMbasis = FEMbasis, FLAG_ITERATIVE = TRUE)))
   
   best_lambda <- output_mixed$bestlambda
-  rmse <- 0
+  rmse <- matrix(0, nrow=nrow(test_locs), ncol=30)
   
   # RMSE
   for(j in 1:m){
@@ -268,19 +273,124 @@ for(k in 1:K){
                    FEMbasis), test_locs) + 
       test_covs[,j]%*% as.matrix(output_mixed$b_i[j, best_lambda])
     
-    rmse <- rmse + (fitted - test_obs[,j])^2
+    rmse[,j] <-  (fitted - test_obs[,j])^2
   }
   
-  CV_error[k] <- sqrt( sum(rmse) / ( m * nrow(test_locs) ) )
+  CV_error[k] <- sqrt(sum(colSums(rmse, na.rm = T))/(m*nrow(test_locs)))
 }
-
 save(CV_error, file = paste0(folder.name, "CV_error.RData"))
 
 fill_col <- viridis::viridis(2, begin=0.25, end=0.95)[1]
 mai_ = par("mai")
 mai_[2] = mai_[2] + 0.075
-pdf(paste0(folder.name, "CV_error.png"), family = "serif", width = 7, height = 7)
+pdf(paste0(folder.name, "CV_error.pdf"), family = "serif", width = 7, height = 7)
 boxplot(CV_error, col=fill_col, main="CV error", xlab="", ylab="",
-        cex.lab = 2, cex.axis = 2, cex.main = 2,
-        col=fill_col)
+        cex.lab = 2, cex.axis = 2, cex.main = 2)
 dev.off()
+
+# BOOTSTRAP --------------------------------------------------------------------
+#load("data/gordon2016_FCmaps.RData")
+#load("data/thickness.RData")
+idx_na <-unique(which(is.na(FCmaps),arr.ind = TRUE)[,1])
+locations <- mesh$nodes[-idx_na,]
+covariates <- thickness[-idx_na,]
+observations <- FCmaps[-idx_na,]
+
+N = nrow(observations)
+
+nsim <- 1000 # consigliato per costruire IC
+betas <- matrix(nrow=1, ncol=nsim)
+b <- matrix(nrow=m, ncol=nsim)
+
+lambda <- 0.002384615384615385 # trovato con 3.analysis
+for(i in 1:nsim){
+  cat("----------------- ", i ," / ", nsim , "-----------------\n")
+  idx <- sample(1:N, size=N, replace = TRUE)
+  locs <- locations[idx,]
+  obs <- observations[idx,]
+  covs<- covariates[idx,]
+  
+  #lambda=seq(1e-3, 1e-1, length.out=12)    #20) #12 patients
+  start_ <- Sys.time()
+  invisible(capture.output(output_mixed <- smooth.FEM.mixed(
+    observations = as.matrix(obs), locations = locs,
+    covariates = as.vector(covs), random_effect = c(1), 
+    lambda = lambda,
+    #lambda.selection.criterion = "grid", 
+    #lambda.selection.lossfunction = "GCV",
+    #DOF.evaluation = "stochastic",
+    FEMbasis = FEMbasis, FLAG_ITERATIVE = TRUE)))
+  time_ <- difftime(Sys.time(), start_, units ="mins")
+  cat("elapsed time: ", time_, "\n")
+  #best_lambda <- output_mixed$bestlambda
+  betas[i] <- output_mixed$beta
+  b[,i] <- output_mixed$b_i
+}
+
+save(betas, b, file=paste0(folder.name,"inference_bootstrap.RData"))
+# 
+#folder.name <- "data/application/2024-04-18-14_40_18/"
+# load(paste0(folder.name, "inference_bootstrap.RData"))
+Q <- quantile(betas, probs = c(0.25,0.5,0.75))
+
+png(paste0(folder.name, "istogramma_beta.png"))
+hist(betas, col ="white", probability =TRUE, xlab="Beta", main=expression(beta))
+abline(v=Q[1], col="red3", lty=2, lwd=2)
+abline(v=Q[3], col="red3", lty=2, lwd=2)
+abline(v=Q[2], col="black", lty=2, lwd=2)
+abline(v=mean(betas), lty=1, lwd=3, col="blue")
+text(Q[1]-0.05*diff(range(betas)),600, labels = expression(Q[1]), srt=90)
+text(Q[2]-0.05*diff(range(betas)),600, labels = expression(Q[2]), srt=90)
+text(Q[3]-0.05*diff(range(betas)),600, labels = expression(Q[3]), srt=90)
+dev.off()
+
+shapiro.test(betas)
+
+png(paste0(folder.name,"qqnorm_betas.png"))
+qqnorm(betas)
+qqline(betas, col="red3", lty=2, lwd=3)
+dev.off()
+
+mai_ = par("mai")
+mai_[2] = mai_[2] + 0.075
+pdf(paste0(folder.name, "IC_95.pdf"), family = "serif", width = 7, height = 7)
+par(mai=mai_)
+hist(betas, col ="white", probability =TRUE, xlab=expression(hat(beta)), main=expression(IC[0.95]),
+     cex.lab = 2, cex.axis = 2, cex.main = 2)
+abline(v=mean(betas), lty=1, lwd=3, col="blue")
+abline(v=mean(betas) - qnorm(0.925)*sd(betas), col="red3", lty=1, lwd=3)
+abline(v=mean(betas) + qnorm(0.925)*sd(betas), col="red3", lty=1, lwd=3)
+dev.off()
+
+c(mean(betas) - qnorm(0.925)*sd(betas), mean(betas), mean(betas) + qnorm(0.925)*sd(betas))
+
+IC_b <- matrix(0, nrow=nrow(b), ncol=3)
+dir.create(paste0(folder.name, "b/"))
+for(i in 1:nrow(b)){
+  IC_b[i,] = c(mean(b[i,]) - qnorm(0.925)*sd(b[i,]), 
+               mean(b[i,]),
+               mean(b[i,]) + qnorm(0.925)*sd(b[i,]))
+  
+  mai_ = par("mai")
+  mai_[2] = mai_[2] + 0.075
+  pdf(paste0(paste0(folder.name, "b/"), "IC_", i ,"_95.pdf"), family = "serif", width = 7, height = 7)
+  par(mai=mai_)
+  hist(b[i,], col ="white", probability =TRUE, xlab=bquote(hat(alpha)[.(i)]), main=expression(IC[0.95]),
+       cex.lab = 2, cex.axis = 2, cex.main = 2)
+  abline(v=mean(b[i,]), lty=1, lwd=3, col="blue")
+  abline(v=mean(b[i,]) - qnorm(0.925)*sd(b[i,]), col="red3", lty=1, lwd=3)
+  abline(v=mean(b[i,]) + qnorm(0.925)*sd(b[i,]), col="red3", lty=1, lwd=3)
+  dev.off()
+}
+  
+colnames(IC_b) <- c("left", 
+                    "mean", 
+                    "right")
+row.names(IC_b)
+IC_b <- matrix(as.numeric(format(IC_b, digits=4)), nrow=30, ncol=3)
+
+colnames(IC_b) <- c("left", 
+                    "mean", 
+                    "right")
+rownames(IC_b) <- 1:30
+write.csv(IC_b,file = paste0(folder.name, "IC_b.csv"))
