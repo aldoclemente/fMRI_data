@@ -22,7 +22,9 @@ dim(idxs) #488   1 (510   1 without filter)
 head(idxs)
 
 idxs <- as.integer(idxs$id)
-## fMRI ------------------------------------------------------------------------
+write.table(idxs, row.names = FALSE, col.names = FALSE,
+            file = "subject_idxs.txt")
+## download data fMRI ----------------------------------------------------------
 ext_disk <- "/media/aldo/EXTERNAL_USB/"
 
 if(!dir.exists(paste0(ext_disk, "data/")))
@@ -30,6 +32,7 @@ if(!dir.exists(paste0(ext_disk, "data/")))
 
 dest_path_rest <- paste0(ext_disk, "data/rfMRI_REST/")
 dest_path_thick <- paste0(ext_disk, "data/thickness/")
+dest_path_dti <- paste0(ext_disk, "data/DTI/")
 
 if(!dir.exists(dest_path_rest))
   dir.create(dest_path_rest)
@@ -37,28 +40,14 @@ if(!dir.exists(dest_path_rest))
 if(!dir.exists(dest_path_thick))
   dir.create(dest_path_thick)
 
-for(i in 1:length(idxs[1:80])){
-  
-  input_path <- paste0("HCP/",idxs[i], "/MNINonLinear/")
-  download_hcp_file(paste0(input_path, "Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas.dtseries.nii"),
-                    destfile = paste0(dest_path_rest, idxs[i],".rfMRI_REST1_LR_Atlas.dtseries.nii"),
-                    verbose = FALSE)
-}
+if(!dir.exists(dest_path_dti))
+  dir.create(dest_path_dti)
 
-mask_no_thickness <- c()
-for(i in 1:length(idxs[1:80])){
-  input_path <- paste0("HCP/",idxs[i], "/MNINonLinear/")
-  tryCatch({
-    download_hcp_file(paste0(input_path, "fsaverage_LR32k/", idxs[i], ".thickness.32k_fs_LR.dscalar.nii"),
-                      destfile = paste0(dest_path_thick, idxs[i],".thickness.32k_fs_LR.dscalar.nii"),
-                      verbose = FALSE)
-  }, error = function(e){
-    mask_no_thickness <- append(mask_no_thickness, i)
-  })
-}
+# download data, need awscli installed and configured
+system("./download_hcp_data.sh")
 
 # processing -------------------------------------------------------------------
-# run from bash processing_data.sh 
+system("./processing_data.sh")
 
 # open atlas data --------------------------------------------------------------
 # assuming mesh is the 2.5D mesh of the left hemisphere of the brain (Conte69 atlas) 
